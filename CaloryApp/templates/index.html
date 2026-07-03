@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CaloryApp Home</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f8f9fa;
+            color: #333;
+        }
+        header {
+            background: #4a90e2;
+            color: white;
+            padding: 2rem 1.5rem;
+            text-align: center;
+        }
+        main {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+        .hero {
+            display: grid;
+            gap: 1rem;
+            align-items: center;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            padding: 1.5rem;
+        }
+        .features {
+            display: grid;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        .feature {
+            padding: 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #fff;
+        }
+        footer {
+            text-align: center;
+            padding: 1.5rem 0;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Welcome to CaloryApp</h1>
+        <p>Track calories, set goals, and stay on top of your nutrition.</p>
+    </header>
+    <main>
+        <section class="hero card">
+            <h2>Your daily nutrition dashboard</h2>
+            <p>CaloryApp helps you monitor calorie intake, review meals, and plan healthy habits in one simple place.</p>
+        </section>
+        <section class="features">
+            <div class="feature">
+                <h3>Log meals</h3>
+                <p>Easily add foods and see calories per meal with a clear summary of your daily intake.</p>
+            </div>
+            <div class="feature">
+                <h3>Set targets</h3>
+                <p>Define your daily calorie goals and track progress over time.</p>
+            </div>
+            <div class="feature">
+                <h3>Stay motivated</h3>
+                <p>Build healthier habits with simple, intuitive insights into your eating patterns.</p>
+            </div>
+        </section>
+    </main>
+    <footer>
+        <p><a href="{% url 'login' %}">Login</a> | <a href="{% url 'register' %}">Register</a> | <a href="{% url 'about' %}">About</a></p>
+        <p>CaloryApp &copy; 2026</p>
+    </footer>
+</body>
+</html>

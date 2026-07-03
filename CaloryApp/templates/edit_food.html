@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Food - CaloryApp</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f8f9fa; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .card { background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); padding: 2rem; width: 400px; }
+        h1 { color: #4a90e2; text-align: center; }
+        input, button { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        button { background: #4a90e2; color: white; border: none; cursor: pointer; font-size: 16px; }
+        button:hover { background: #357abd; }
+        .cancel { background: #6c757d; }
+        .cancel:hover { background: #5a6268; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Edit Food Entry</h1>
+        <form method="post">
+            {% csrf_token %}
+            <input type="text" name="item_name" placeholder="Item name" maxlength="200" required value="{{ form.item_name.value|default:'' }}">
+            <input type="number" name="calories" placeholder="Calories" step="any" required value="{{ form.calories.value|default:'' }}">
+            <button type="submit">Save</button>
+            <a href="{% url 'dashboard' %}"><button type="button" class="cancel" onclick="window.location='{% url 'dashboard' %}'">Cancel</button></a>
+        </form>
+    </div>
+</body>
+</html>
