@@ -3,6 +3,7 @@ from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.utils import timezone
+from django.http import JsonResponse
 from .forms import RegistrationForm, ProfileForm, FoodEntryForm
 from .models import CalorieProfile, FoodEntry
 
@@ -51,12 +52,26 @@ def dashboard(request):
         profile = CalorieProfile.objects.get(user=request.user)
     except CalorieProfile.DoesNotExist:
         return redirect('profile')
+    return render(request, 'dashboard.html', {'profile': profile})
 
+@login_required
+def api_dashboard(request):
+    profile = CalorieProfile.objects.get(user=request.user)
     today = timezone.now().date()
     food_entries = FoodEntry.objects.filter(user=request.user, date=today)
     total_consumed = food_entries.aggregate(Sum('calories'))['calories__sum'] or 0
     required_calories = profile.bmr()
+    remaining = required_calories - total_consumed
+    entries = [{'id': e.id, 'item_name': e.item_name, 'calories': e.calories} for e in food_entries]
+    return JsonResponse({
+        'required_calories': round(required_calories, 2),
+        'total_consumed': round(total_consumed, 2),
+        'remaining': round(remaining, 2),
+        'entries': entries,
+    })
 
+@login_required
+def add_food(request):
     if request.method == 'POST':
         form = FoodEntryForm(request.POST)
         if form.is_valid():
@@ -64,19 +79,9 @@ def dashboard(request):
             entry.user = request.user
             entry.date = timezone.now().date()
             entry.save()
-            return redirect('dashboard')
-    else:
-        form = FoodEntryForm()
-
-    context = {
-        'profile': profile,
-        'required_calories': round(required_calories, 2),
-        'total_consumed': round(total_consumed, 2),
-        'remaining': round(required_calories - total_consumed, 2),
-        'food_entries': food_entries,
-        'form': form,
-    }
-    return render(request, 'dashboard.html', context)
+            return JsonResponse({'success': True})
+        return JsonResponse({'success': False, 'errors': form.errors}, status=400)
+    return JsonResponse({'error': 'POST only'}, status=405)
 
 @login_required
 def edit_food(request, entry_id):
@@ -85,18 +90,17 @@ def edit_food(request, entry_id):
         form = FoodEntryForm(request.POST, instance=entry)
         if form.is_valid():
             form.save()
-            return redirect('dashboard')
-    else:
-        form = FoodEntryForm(instance=entry)
-    return render(request, 'edit_food.html', {'form': form, 'entry': entry})
+            return JsonResponse({'success': True})
+        return JsonResponse({'success': False, 'errors': form.errors}, status=400)
+    return JsonResponse({'error': 'POST only'}, status=405)
 
 @login_required
 def delete_food(request, entry_id):
     entry = FoodEntry.objects.get(id=entry_id, user=request.user)
     if request.method == 'POST':
         entry.delete()
-        return redirect('dashboard')
-    return render(request, 'delete_food.html', {'entry': entry})
+        return JsonResponse({'success': True})
+    return JsonResponse({'error': 'POST only'}, status=405)
 
 def user_logout(request):
     logout(request)

@@ -19,12 +19,27 @@
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
         th { color: #666; }
-        input, button { padding: 10px; margin: 4px; border: 1px solid #ddd; border-radius: 4px; }
+        input, button { padding: 10px; margin: 4px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
         button { background: #4a90e2; color: white; border: none; cursor: pointer; }
         button:hover { background: #357abd; }
         .add-form { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
         .add-form input { flex: 1; min-width: 150px; }
         .add-form button { flex-shrink: 0; }
+        .action-btn { background: none; border: none; cursor: pointer; padding: 4px 8px; font-size: 14px; }
+        .edit-btn { color: #4a90e2; }
+        .delete-btn { color: #dc3545; }
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); justify-content: center; align-items: center; }
+        .modal.show { display: flex; }
+        .modal-content { background: white; border-radius: 8px; padding: 2rem; width: 400px; max-width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+        .modal-content h2 { margin-top: 0; color: #333; }
+        .modal-content input { width: 100%; margin: 8px 0; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+        .modal-actions button { flex: 1; }
+        .btn-cancel { background: #6c757d; }
+        .btn-cancel:hover { background: #5a6268; }
+        .btn-danger { background: #dc3545; }
+        .btn-danger:hover { background: #c82333; }
+        .error-msg { color: #dc3545; font-size: 14px; margin: 4px 0; display: none; }
     </style>
 </head>
 <body>
@@ -36,64 +51,163 @@
             <a href="{% url 'logout' %}">Logout</a>
         </div>
     </div>
+
     <div class="container">
-        <div class="stats">
+        <div class="stats" id="stats">
             <div class="stat-card">
                 <h3>Required Calories</h3>
-                <div class="value">{{ required_calories }}</div>
+                <div class="value" id="required-cal">--</div>
                 <p>kcal/day (BMR)</p>
             </div>
             <div class="stat-card">
                 <h3>Consumed Today</h3>
-                <div class="value">{{ total_consumed }}</div>
+                <div class="value" id="consumed-cal">--</div>
                 <p>kcal</p>
             </div>
             <div class="stat-card">
                 <h3>Remaining</h3>
-                <div class="value {% if remaining < 0 %}red{% else %}green{% endif %}">{{ remaining }}</div>
+                <div class="value" id="remaining-cal">--</div>
                 <p>kcal</p>
             </div>
         </div>
 
         <div class="card">
             <h2>Add Food Entry</h2>
-            {% if form.errors %}
-            <ul style="color:red;">
-                {% for field, errors in form.errors.items %}
-                {% for error in errors %}
-                <li>{{ error }}</li>
-                {% endfor %}
-                {% endfor %}
-            </ul>
-            {% endif %}
-            <form method="post" class="add-form">
-                {% csrf_token %}
-                <input type="text" name="item_name" placeholder="Item name (e.g. Rice)" maxlength="200" required id="id_item_name" value="{{ form.item_name.value|default:'' }}">
-                <input type="number" name="calories" placeholder="Calories (e.g. 250)" step="any" required id="id_calories" value="{{ form.calories.value|default:'' }}">
-                <button type="submit">Add</button>
-            </form>
+            <div class="add-form">
+                <input type="text" id="add-item" placeholder="Item name (e.g. Rice)" maxlength="200" required>
+                <input type="number" id="add-cal" placeholder="Calories (e.g. 250)" step="any" required>
+                <button onclick="addEntry()">Add</button>
+            </div>
+            <div class="error-msg" id="add-error"></div>
         </div>
 
         <div class="card">
             <h2>Today's Food Entries</h2>
-            {% if food_entries %}
-            <table>
-                <tr><th>Item</th><th>Calories</th><th>Actions</th></tr>
-                {% for entry in food_entries %}
-                <tr>
-                    <td>{{ entry.item_name }}</td>
-                    <td>{{ entry.calories }}</td>
-                    <td>
-                        <a href="{% url 'edit_food' entry.id %}" style="color:#4a90e2;text-decoration:none;margin-right:10px;">Edit</a>
-                        <a href="{% url 'delete_food' entry.id %}" style="color:#dc3545;text-decoration:none;">Delete</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </table>
-            {% else %}
-            <p style="color:#666;">No entries yet. Add your first food item above.</p>
-            {% endif %}
+            <div id="entries-container"><p style="color:#666;">Loading...</p></div>
         </div>
     </div>
+
+    <!-- Edit Modal -->
+    <div class="modal" id="edit-modal">
+        <div class="modal-content">
+            <h2>Edit Food Entry</h2>
+            <input type="hidden" id="edit-id">
+            <input type="text" id="edit-item" placeholder="Item name" maxlength="200" required>
+            <input type="number" id="edit-cal" placeholder="Calories" step="any" required>
+            <div class="error-msg" id="edit-error"></div>
+            <div class="modal-actions">
+                <button onclick="saveEdit()">Save</button>
+                <button class="btn-cancel" onclick="closeModal('edit-modal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Modal -->
+    <div class="modal" id="delete-modal">
+        <div class="modal-content">
+            <h2>Delete Food Entry</h2>
+            <p>Are you sure you want to delete <strong id="delete-name"></strong>?</p>
+            <input type="hidden" id="delete-id">
+            <div class="modal-actions">
+                <button class="btn-danger" onclick="confirmDelete()">Delete</button>
+                <button class="btn-cancel" onclick="closeModal('delete-modal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function csrf() {
+            return document.cookie.split('; ').find(r => r.startsWith('csrftoken=')).split('=')[1];
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('show');
+        }
+
+        function loadDashboard() {
+            fetch('/api/dashboard/')
+                .then(r => r.json())
+                .then(d => {
+                    document.getElementById('required-cal').textContent = d.required_calories;
+                    document.getElementById('consumed-cal').textContent = d.total_consumed;
+                    const rem = document.getElementById('remaining-cal');
+                    rem.textContent = d.remaining;
+                    rem.className = 'value' + (d.remaining < 0 ? ' red' : ' green');
+                    const c = document.getElementById('entries-container');
+                    if (d.entries.length === 0) {
+                        c.innerHTML = '<p style="color:#666;">No entries yet. Add your first food item above.</p>';
+                    } else {
+                        c.innerHTML = '<table><tr><th>Item</th><th>Calories</th><th>Actions</th></tr>' +
+                            d.entries.map(e => `<tr>
+                                <td>${e.item_name}</td>
+                                <td>${e.calories}</td>
+                                <td>
+                                    <button class="action-btn edit-btn" onclick="openEdit(${e.id},'${e.item_name.replace(/'/g,"\\'")}',${e.calories})">Edit</button>
+                                    <button class="action-btn delete-btn" onclick="openDelete(${e.id},'${e.item_name.replace(/'/g,"\\'")}')">Delete</button>
+                                </td>
+                            </tr>`).join('') + '</table>';
+                    }
+                });
+        }
+
+        function addEntry() {
+            const item = document.getElementById('add-item').value.trim();
+            const cal = document.getElementById('add-cal').value;
+            const err = document.getElementById('add-error');
+            err.style.display = 'none';
+            if (!item || !cal) { err.textContent = 'Both fields are required.'; err.style.display = 'block'; return; }
+            fetch('/api/add/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrf()},
+                body: 'item_name=' + encodeURIComponent(item) + '&calories=' + encodeURIComponent(cal)
+            }).then(r => {
+                if (r.ok) { document.getElementById('add-item').value = ''; document.getElementById('add-cal').value = ''; loadDashboard(); }
+                else { r.json().then(d => { err.textContent = Object.values(d.errors).flat().join(', '); err.style.display = 'block'; }); }
+            });
+        }
+
+        function openEdit(id, name, cal) {
+            document.getElementById('edit-id').value = id;
+            document.getElementById('edit-item').value = name;
+            document.getElementById('edit-cal').value = cal;
+            document.getElementById('edit-error').style.display = 'none';
+            document.getElementById('edit-modal').classList.add('show');
+        }
+
+        function saveEdit() {
+            const id = document.getElementById('edit-id').value;
+            const item = document.getElementById('edit-item').value.trim();
+            const cal = document.getElementById('edit-cal').value;
+            const err = document.getElementById('edit-error');
+            err.style.display = 'none';
+            if (!item || !cal) { err.textContent = 'Both fields are required.'; err.style.display = 'block'; return; }
+            fetch('/api/edit/' + id + '/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrf()},
+                body: 'item_name=' + encodeURIComponent(item) + '&calories=' + encodeURIComponent(cal)
+            }).then(r => {
+                if (r.ok) { closeModal('edit-modal'); loadDashboard(); }
+                else { r.json().then(d => { err.textContent = Object.values(d.errors).flat().join(', '); err.style.display = 'block'; }); }
+            });
+        }
+
+        function openDelete(id, name) {
+            document.getElementById('delete-id').value = id;
+            document.getElementById('delete-name').textContent = name;
+            document.getElementById('delete-modal').classList.add('show');
+        }
+
+        function confirmDelete() {
+            const id = document.getElementById('delete-id').value;
+            fetch('/api/delete/' + id + '/', {
+                method: 'POST',
+                headers: {'X-CSRFToken': csrf()}
+            }).then(r => {
+                if (r.ok) { closeModal('delete-modal'); loadDashboard(); }
+            });
+        }
+
+        loadDashboard();
+    </script>
 </body>
 </html>
