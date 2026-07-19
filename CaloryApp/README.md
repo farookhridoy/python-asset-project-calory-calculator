@@ -26,6 +26,7 @@ cd python-asset-project-calory-calculator
 python -m venv v
 v\Scripts\activate
 
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 # Windows (PowerShell)
 python -m venv v
 v\Scripts\Activate.ps1
@@ -40,6 +41,11 @@ You should see `(v)` in your terminal prompt, indicating the virtual environment
 ### Step 3: Install Dependencies
 
 ```bash
+
+python -m venv v --clear
+
+\v\Scripts\activate
+
 pip install django
 ```
 
